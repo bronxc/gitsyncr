@@ -8,7 +8,6 @@ func TestParseConfig(t *testing.T) {
 		in, want string
 	}{
 		{config.User.Key, "~/.ssh/id_rsa"},
-		{config.User.Key, "~/.ssh/id_rsa"},
 		{config.Forks["linux"].Upstream, "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"},
 		{config.Forks["linux"].Fork, "git@github.com:topikettunen/linux.git"},
 		{config.Forks["kubernetes"].Upstream, "git@github.com:kubernetes/kubernetes.git"},
