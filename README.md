@@ -1,5 +1,3 @@
-# Work in progress
-
 ## About
 
 I contribute to various different open source projects and have multiple
@@ -35,8 +33,8 @@ key = "~/.ssh/id_rsa"
   fork = "git@github.com:sbcl/sbcl.git"
 ```
 
-At the moment `gitsyncr` only supports SSH authentication since that is something that I
-mainly use for my development. 
+At the moment `gitsyncr` only supports SSH authentication since that is
+something that I mainly use for my development.
 
 ## Running
 
