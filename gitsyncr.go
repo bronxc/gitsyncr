@@ -161,19 +161,6 @@ func cloneRepo(url, path string, user user, publicKey *ssh.PublicKeys) {
 	}
 }
 
-// func remoteExists(arrayType interface{}, item interface{}) bool {
-// 	arr := reflect.ValueOf(arrayType)
-// 	if arr.Kind() != reflect.Array {
-// 		log.Fatalf("remoteExists: arrayType has invalid data-type\n")
-// 	}
-// 	for i := 0; i < arr.Len(); i++ {
-// 		if arr.Index(i).Interface() == item {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
 func addForkRemote(path, url string) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
