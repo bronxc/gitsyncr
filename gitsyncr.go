@@ -36,32 +36,36 @@ type fork struct {
 
 func main() {
 	log.Println("Syncing all your forks...")
-	gitsyncrDir := gitsyncrDir()
+	gitsyncrConfig := gitsyncrConfig()
 	forkDir := forkDir()
-	// Using default path for now, should be changeable
-	cfg := parseConfig(fmt.Sprintf("%s/config.toml", gitsyncrDir))
+	cfg := parseConfig(gitsyncrConfig)
+	publicKey := newPublicKeys(cfg.User.Key)
 	for forkName, fork := range cfg.Forks {
 		forkPath := fmt.Sprintf("%s/%s", forkDir, forkName)
-		log.Printf("Cloning %s to %s...", fork.Upstream, forkPath)
-		cloneRepo(fork.Upstream, forkPath, cfg.User)
-		addForkRemote(forkPath, fork.Fork)
+		// Check for already existing repo
+		// if existing -> pull
+		if _, err := os.Stat(forkPath); !os.IsNotExist(err) {
+			log.Printf("%s already existing, pulling changes...\n", forkPath)
+			pullChanges(fork.Upstream, forkPath, "master", cfg.User, publicKey)
+		} else {
+			log.Printf("Cloning %s to %s...", fork.Upstream, forkPath)
+			cloneRepo(fork.Upstream, forkPath, cfg.User, publicKey)
+			addForkRemote(forkPath, fork.Fork)
+		}
 		log.Printf("Pushing changes to %s...", fork.Fork)
-		pushChanges(forkPath, "fork", cfg.User)
+		pushChanges(fork.Fork, forkPath, "fork", cfg.User, publicKey)
 	}
 }
 
-func gitsyncrDir() string {
-	var gitsyncrDir string
-	if value, ok := os.LookupEnv("GITSYNCR_CONFIG_DIR"); ok {
-		gitsyncrDir = value
+func gitsyncrConfig() string {
+	var gitsyncrConfig string
+	if value, ok := os.LookupEnv("GITSYNCR_CONFIG"); ok {
+		gitsyncrConfig = value
 	} else {
 		home := userHomeDir()
-		gitsyncrDir = fmt.Sprintf("%s/.gitsyncr", home)
+		gitsyncrConfig = fmt.Sprintf("%s/.gitsyncr", home)
 	}
-	if _, err := os.Stat(gitsyncrDir); os.IsNotExist(err) {
-		os.Mkdir(gitsyncrDir, os.ModeDir)
-	}
-	return gitsyncrDir
+	return gitsyncrConfig
 }
 
 func forkDir() string {
@@ -80,7 +84,7 @@ func userHomeDir() string {
 	return home
 }
 
-// Config should be read from ~/.gitsyncr/config.toml by default
+// Config should be read from ~/.gitsyncr by default
 func parseConfig(cfgPath string) config {
 	var config config
 	if _, err := toml.DecodeFile(cfgPath, &config); err != nil {
@@ -104,30 +108,18 @@ func normalizeSSHKeyPath(path string) string {
 	}
 }
 
-func cloneRepo(url, path string, user user) {
-	// Check for already existing repo
-	// if existing -> pull
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		log.Printf("%s already existing, pulling changes...\n", path)
-		pullChanges(path, "master")
-		return
-	}
-	var publicKey *ssh.PublicKeys
-	sshPath := normalizeSSHKeyPath(user.Key)
+func newPublicKeys(key string) *ssh.PublicKeys {
+	var publicKeys *ssh.PublicKeys
+	sshPath := normalizeSSHKeyPath(key)
 	sshKey, _ := ioutil.ReadFile(sshPath)
-	publicKey, keyError := ssh.NewPublicKeys("git", []byte(sshKey), "")
+	publicKeys, keyError := ssh.NewPublicKeys("git", []byte(sshKey), "")
 	if keyError != nil {
 		log.Fatal(keyError)
 	}
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		<-stop
-		cancel()
-	}()
-	log.Println("To gracefully stop the clone operation, push Crtl-C.")
+	return publicKeys
+}	
+
+func cloneOpts(url string, user user, publicKey *ssh.PublicKeys) git.CloneOptions {
 	var cloneOpts git.CloneOptions
 	// This could probably be done cleaner.
 	// Upstream fork should be cloned with a upstream remote name for easier
@@ -150,6 +142,20 @@ func cloneRepo(url, path string, user user) {
 			SingleBranch:  true,
 		}
 	}
+	return cloneOpts
+}
+
+func cloneRepo(url, path string, user user, publicKey *ssh.PublicKeys) {
+	cloneOpts := cloneOpts(url, user, publicKey)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-stop
+		cancel()
+	}()
+	log.Println("To gracefully stop the clone operation, push Crtl-C.")
 	_, err := git.PlainCloneContext(ctx, path, false, &cloneOpts)
 	if err != nil {
 		log.Fatal(err)
@@ -192,8 +198,29 @@ func addForkRemote(path, url string) {
 	}
 }
 
-// TODO(topi): Pulling fails if up to date when pulling from git://
-func pullChanges(path, branch string) {
+func pullOpts(url, branch, remote string, user user, publicKey *ssh.PublicKeys) git.PullOptions {
+	var pullOpts git.PullOptions
+	// This could probably be done cleaner.
+	// Upstream fork should be cloned with a upstream remote name for easier
+	// distinction between remotes (personal preference).
+	if strings.Contains(url, "git://") {
+		pullOpts = git.PullOptions{
+			RemoteName:    "upstream",
+			ReferenceName: plumbing.NewBranchReferenceName(branch),
+			Progress: os.Stdout,
+		}
+	} else {
+		pullOpts = git.PullOptions{
+			RemoteName: remote,
+			Auth: publicKey,
+			Progress: os.Stdout,
+			ReferenceName: plumbing.NewBranchReferenceName(branch),
+		}
+	}
+	return pullOpts
+}
+
+func pullChanges(url, path, branch string, user user, publicKey *ssh.PublicKeys) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		log.Fatal(err)
@@ -202,34 +229,52 @@ func pullChanges(path, branch string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = w.Pull(&git.PullOptions{
-		RemoteName:    "upstream",
-		ReferenceName: plumbing.NewBranchReferenceName(branch),
-	})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
+	pullOpts := pullOpts(url, branch, "upstream", user, publicKey)
+	err = w.Pull(&pullOpts)
+	if err == git.NoErrAlreadyUpToDate {
+		log.Printf("%s already up to date...\n", path)
+	} else if err != nil {
 		log.Fatal(err)
 	}
 }
 
-// TODO(topi): Pushing hangs without error
-func pushChanges(path, remote string, user user) {
+func pushOpts(url, remote string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
+	var pushOpts git.PushOptions
+	// This could probably be done cleaner.
+	// Upstream fork should be cloned with a upstream remote name for easier
+	// distinction between remotes (personal preference).
+	if strings.Contains(url, "git://") {
+		pushOpts = git.PushOptions{
+			RemoteName: remote,
+			Progress: os.Stdout,
+		}
+	} else {
+		var publicKey *ssh.PublicKeys
+		sshPath := normalizeSSHKeyPath(user.Key)
+		sshKey, _ := ioutil.ReadFile(sshPath)
+		publicKey, keyError := ssh.NewPublicKeys("git", []byte(sshKey), "")
+		if keyError != nil {
+			log.Fatal(keyError)
+		}
+		pushOpts = git.PushOptions{
+			RemoteName: remote,
+			Auth: publicKey,
+			Progress: os.Stdout,
+		}
+	}
+	return pushOpts
+}
+
+func pushChanges(url, path, remote string, user user, publicKey *ssh.PublicKeys) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var publicKey *ssh.PublicKeys
-	sshPath := normalizeSSHKeyPath(user.Key)
-	sshKey, _ := ioutil.ReadFile(sshPath)
-	publicKey, keyError := ssh.NewPublicKeys("git", []byte(sshKey), "")
-	if keyError != nil {
-		log.Fatal(keyError)
-	}
-	err = r.Push(&git.PushOptions{
-		RemoteName: remote,
-		Auth: publicKey,
-		Progress: os.Stdout,
-	})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
+	pushOpts := pushOpts(url, remote, user, publicKey)
+	err = r.Push(&pushOpts)
+	if err == git.NoErrAlreadyUpToDate {
+		log.Printf("%s already up to date...\n", url)
+	} else if err != nil {
 		log.Fatal(err)
 	}
 }
