@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"reflect"
+	// "reflect"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -45,6 +45,7 @@ func main() {
 		if _, err := os.Stat(forkPath); !os.IsNotExist(err) {
 			log.Printf("%s already existing, pulling changes...\n", forkPath)
 			pullChanges(fork.Upstream, forkPath, "master", cfg.User, publicKey)
+			addForkRemote(forkPath, fork.Fork) // if necessary
 		} else {
 			log.Printf("Cloning %s to %s...", fork.Upstream, forkPath)
 			cloneRepo(fork.Upstream, forkPath, cfg.User, publicKey)
@@ -160,39 +161,32 @@ func cloneRepo(url, path string, user user, publicKey *ssh.PublicKeys) {
 	}
 }
 
-func remoteExists(arrayType interface{}, item interface{}) bool {
-	arr := reflect.ValueOf(arrayType)
-	if arr.Kind() != reflect.Array {
-		log.Fatalf("Invalid data-type\n")
-	}
-	for i := 0; i < arr.Len(); i++ {
-		if arr.Index(i).Interface() == item {
-			return true
-		}
-	}
-	return false
-}
+// func remoteExists(arrayType interface{}, item interface{}) bool {
+// 	arr := reflect.ValueOf(arrayType)
+// 	if arr.Kind() != reflect.Array {
+// 		log.Fatalf("remoteExists: arrayType has invalid data-type\n")
+// 	}
+// 	for i := 0; i < arr.Len(); i++ {
+// 		if arr.Index(i).Interface() == item {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func addForkRemote(path, url string) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	remotes, err := r.Remotes()
-	if err != nil {
+	_, err = r.CreateRemote(&gitConfig.RemoteConfig{
+		Name: "fork",
+		URLs: []string{url},
+	})
+	if err == git.ErrRemoteExists {
+		log.Printf("fork remote already exists in %s, continuing...", path)
+	} else if err != nil {
 		log.Fatal(err)
-	}
-	if remoteExists(remotes, "fork") {
-		return
-	} else {
-		_, err = r.CreateRemote(&gitConfig.RemoteConfig{
-			Name: "fork",
-			URLs: []string{url},
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		return
 	}
 }
 
