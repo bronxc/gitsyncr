@@ -44,15 +44,17 @@ func main() {
 		// if existing -> pull
 		if _, err := os.Stat(forkPath); !os.IsNotExist(err) {
 			log.Printf("%s already existing, pulling changes...\n", forkPath)
+			checkRemote(forkPath, fork.Upstream, "upstream")
+			checkRemote(forkPath, fork.Fork, "fork")
 			pullChanges(fork.Upstream, forkPath, "master", cfg.User, publicKey)
-			addForkRemote(forkPath, fork.Fork) // if necessary
 		} else {
 			log.Printf("Cloning %s to %s...", fork.Upstream, forkPath)
 			cloneRepo(fork.Upstream, forkPath, cfg.User, publicKey)
-			addForkRemote(forkPath, fork.Fork)
+			checkRemote(forkPath, fork.Upstream, "upstream")
+			checkRemote(forkPath, fork.Fork, "fork")
 		}
 		log.Printf("Pushing changes to %s...", fork.Fork)
-		pushChanges(fork.Fork, forkPath, "fork", cfg.User, publicKey)
+		pushChanges(fork.Fork, forkPath, cfg.User, publicKey)
 	}
 }
 
@@ -161,23 +163,24 @@ func cloneRepo(url, path string, user user, publicKey *ssh.PublicKeys) {
 	}
 }
 
-func addForkRemote(path, url string) {
+func checkRemote(path, url, remote string) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Creating %s remote to %s...\n", remote, path)
 	_, err = r.CreateRemote(&gitConfig.RemoteConfig{
-		Name: "fork",
+		Name: remote,
 		URLs: []string{url},
 	})
 	if err == git.ErrRemoteExists {
-		log.Printf("fork remote already exists in %s, continuing...", path)
+		log.Printf("%s remote already exists in %s, continuing...\n", remote, path)
 	} else if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func pullOpts(url, branch, remote string, user user, publicKey *ssh.PublicKeys) git.PullOptions {
+func pullOpts(url, branch string, user user, publicKey *ssh.PublicKeys) git.PullOptions {
 	var pullOpts git.PullOptions
 	// This could probably be done cleaner.
 	// Upstream fork should be cloned with a upstream remote name for easier
@@ -190,7 +193,7 @@ func pullOpts(url, branch, remote string, user user, publicKey *ssh.PublicKeys) 
 		}
 	} else {
 		pullOpts = git.PullOptions{
-			RemoteName: remote,
+			RemoteName: "upstream",
 			Auth: publicKey,
 			Progress: os.Stdout,
 			ReferenceName: plumbing.NewBranchReferenceName(branch),
@@ -208,7 +211,7 @@ func pullChanges(url, path, branch string, user user, publicKey *ssh.PublicKeys)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pullOpts := pullOpts(url, branch, "upstream", user, publicKey)
+	pullOpts := pullOpts(url, branch, user, publicKey)
 	err = w.Pull(&pullOpts)
 	if err == git.NoErrAlreadyUpToDate {
 		log.Printf("%s already up to date...\n", path)
@@ -217,14 +220,14 @@ func pullChanges(url, path, branch string, user user, publicKey *ssh.PublicKeys)
 	}
 }
 
-func pushOpts(url, remote string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
+func pushOpts(url string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
 	var pushOpts git.PushOptions
 	// This could probably be done cleaner.
 	// Upstream fork should be cloned with a upstream remote name for easier
 	// distinction between remotes (personal preference).
 	if strings.Contains(url, "git://") {
 		pushOpts = git.PushOptions{
-			RemoteName: remote,
+			RemoteName: "fork",
 			Progress: os.Stdout,
 		}
 	} else {
@@ -236,7 +239,7 @@ func pushOpts(url, remote string, user user, publicKey *ssh.PublicKeys) git.Push
 			log.Fatal(keyError)
 		}
 		pushOpts = git.PushOptions{
-			RemoteName: remote,
+			RemoteName: "fork",
 			Auth: publicKey,
 			Progress: os.Stdout,
 		}
@@ -244,12 +247,12 @@ func pushOpts(url, remote string, user user, publicKey *ssh.PublicKeys) git.Push
 	return pushOpts
 }
 
-func pushChanges(url, path, remote string, user user, publicKey *ssh.PublicKeys) {
+func pushChanges(url, path string, user user, publicKey *ssh.PublicKeys) {
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pushOpts := pushOpts(url, remote, user, publicKey)
+	pushOpts := pushOpts(url, user, publicKey)
 	err = r.Push(&pushOpts)
 	if err == git.NoErrAlreadyUpToDate {
 		log.Printf("%s already up to date...\n", url)
