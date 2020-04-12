@@ -55,6 +55,10 @@ up-to-date.
 
 ## TODO
 
+- Logs to file
+
+	- Helpful when running this with `cron` etc.
+
 - Assume different remote names
 
 	- At the moment it only uses `upstream` and `fork`
