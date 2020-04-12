@@ -61,4 +61,6 @@ up-to-date.
 	
 - Fork specific location and branches
 
+- Recurse submodules
+
 - Various refactorings
