@@ -23,8 +23,6 @@ type config struct {
 }
 
 type user struct {
-	// Username string
-	// Password string
 	Key      string
 }
 
