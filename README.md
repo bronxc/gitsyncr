@@ -53,20 +53,3 @@ upstream url.
 
 Personally I run this daily, so I know that almost all the times my fork stays
 up-to-date.
-
-
-## TODO
-
-- Logs to file
-
-	- Helpful when running this with `cron` etc.
-
-- Assume different remote names
-
-	- At the moment it only uses `upstream` and `fork`
-	
-- Fork specific location and branches
-
-- Recurse submodules
-
-- Various refactorings
