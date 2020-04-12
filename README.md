@@ -21,7 +21,6 @@ configurations can be found from `sample.toml` and it looks something like this:
 
 ``` toml
 [user]
-username = "topikettunen"
 key = "~/.ssh/id_rsa"
 
 [forks]
