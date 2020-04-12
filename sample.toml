@@ -1,6 +1,5 @@
 [user]
 username = "topikettunen"
-password = "test"
 key = "~/.ssh/id_rsa"
 
 [forks]
