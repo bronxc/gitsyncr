@@ -231,13 +231,6 @@ func pushOpts(url string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
 			Progress: os.Stdout,
 		}
 	} else {
-		var publicKey *ssh.PublicKeys
-		sshPath := normalizeSSHKeyPath(user.Key)
-		sshKey, _ := ioutil.ReadFile(sshPath)
-		publicKey, keyError := ssh.NewPublicKeys("git", []byte(sshKey), "")
-		if keyError != nil {
-			log.Fatal(keyError)
-		}
 		pushOpts = git.PushOptions{
 			RemoteName: "fork",
 			Auth: publicKey,
