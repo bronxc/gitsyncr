@@ -35,8 +35,8 @@ key = "~/.ssh/id_rsa"
   fork = "git@github.com:topikettunen/kubernetes.git"
 ```
 
-At the moment `gitsyncr` only supports no authentication (git protocol) or SSH
-authentication since that is something that I mainly use for my development.
+At the moment `gitsyncr` only supports SSH authentication since that is something that I
+mainly use for my development. 
 
 ## Running
 
