@@ -7,8 +7,6 @@ func TestParseConfig(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
-		{config.User.Username, "topikettunen"},
-		{config.User.Password, "test"},
 		{config.User.Key, "~/.ssh/id_rsa"},
 		{config.User.Key, "~/.ssh/id_rsa"},
 		{config.Forks["linux"].Upstream, "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"},
