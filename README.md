@@ -3,7 +3,7 @@
 I contribute to various different open source projects and have multiple
 different forks of these projects, so I needed a simple tool for keeping my
 forks up-to-date. Hence I made this simple tool called `gitsyncr` (mandatory
-Flickr `-r`)
+Flickr `-r`).
 
 ## Installation
 
@@ -33,8 +33,8 @@ key = "~/.ssh/id_rsa"
   fork = "git@github.com:topikettunen/kubernetes.git"
 ```
 
-At the moment `gitsyncr` only supports SSH authentication since that is
-something that I mainly use for my development.
+At the moment `gitsyncr` only supports no authentication (git protocol) or SSH
+authentication since that is something that I mainly use for my development.
 
 ## Running
 
