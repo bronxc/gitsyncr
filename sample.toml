@@ -2,10 +2,10 @@
 key = "~/.ssh/id_rsa"
 
 [forks]
-  [forks.linux]
-  upstream = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
-  fork = "git@github.com:topikettunen/linux.git"
-
   [forks.kubernetes]
   upstream = "git@github.com:kubernetes/kubernetes.git"
   fork = "git@github.com:topikettunen/kubernetes.git"
+
+  [forks.sbcl]
+  upstream = "git@github.com:sbcl/sbcl.git"
+  fork = "git@github.com:sbcl/sbcl.git"
