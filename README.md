@@ -30,7 +30,7 @@ key = "~/.ssh/id_rsa"
 
   [forks.sbcl]
   upstream = "git@github.com:sbcl/sbcl.git"
-  fork = "git@github.com:sbcl/sbcl.git"
+  fork = "git@github.com:topikettunen/sbcl.git"
 ```
 
 At the moment `gitsyncr` only supports SSH authentication since that is
