@@ -1,6 +1,4 @@
-// +build old
-
-package main
+package cmd
 
 import (
 	"context"
@@ -33,7 +31,7 @@ type fork struct {
 	Fork     string
 }
 
-func main() {
+func Gitsyncr() {
 	log.Println("Syncing all your forks...")
 	gitsyncrConfig := gitsyncrConfig()
 	forkDir := forkDir()
