@@ -1,3 +1,5 @@
+// +build old
+
 package main
 
 import (
@@ -22,7 +24,7 @@ type config struct {
 }
 
 type user struct {
-	Key      string
+	Key string
 }
 
 // TODO(topi): Fork specific locations and branches
@@ -117,7 +119,7 @@ func newPublicKeys(key string) *ssh.PublicKeys {
 		log.Fatal(keyError)
 	}
 	return publicKeys
-}	
+}
 
 func cloneOpts(url string, user user, publicKey *ssh.PublicKeys) git.CloneOptions {
 	var cloneOpts git.CloneOptions
@@ -188,13 +190,13 @@ func pullOpts(url, branch string, user user, publicKey *ssh.PublicKeys) git.Pull
 		pullOpts = git.PullOptions{
 			RemoteName:    "upstream",
 			ReferenceName: plumbing.NewBranchReferenceName(branch),
-			Progress: os.Stdout,
+			Progress:      os.Stdout,
 		}
 	} else {
 		pullOpts = git.PullOptions{
-			RemoteName: "upstream",
-			Auth: publicKey,
-			Progress: os.Stdout,
+			RemoteName:    "upstream",
+			Auth:          publicKey,
+			Progress:      os.Stdout,
 			ReferenceName: plumbing.NewBranchReferenceName(branch),
 		}
 	}
@@ -219,7 +221,7 @@ func pullChanges(url, path, branch string, user user, publicKey *ssh.PublicKeys)
 	}
 }
 
-func pushOpts(url string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
+func pushOpts(url string, user user, publicKey *ssh.PublicKeys) git.PushOptions {
 	var pushOpts git.PushOptions
 	// This could probably be done cleaner.
 	// Upstream fork should be cloned with a upstream remote name for easier
@@ -227,13 +229,13 @@ func pushOpts(url string, user user, publicKey *ssh.PublicKeys) git.PushOptions{
 	if strings.Contains(url, "git://") {
 		pushOpts = git.PushOptions{
 			RemoteName: "fork",
-			Progress: os.Stdout,
+			Progress:   os.Stdout,
 		}
 	} else {
 		pushOpts = git.PushOptions{
 			RemoteName: "fork",
-			Auth: publicKey,
-			Progress: os.Stdout,
+			Auth:       publicKey,
+			Progress:   os.Stdout,
 		}
 	}
 	return pushOpts
